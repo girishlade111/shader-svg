@@ -49,7 +49,7 @@ stage:
   with Framer Motion
 - 👻 **SVG-clipped rendering** — shader canvas inside `<foreignObject>`,
   cut to a custom path via `<clipPath>`
-- 🌓 **Dark-mode ready** — `next-themes` scaffolded, Tailwind `darkMode:
+- 🌓 **Dark-mode active** — `next-themes` mounted (default `dark`, system-aware), Tailwind `darkMode:
   'class'`, full `.dark` token set (toggle UI not yet added)
 - 🧩 **shadcn/ui foundation** — `components.json` manifest, full Radix
   primitive suite, `cn()` utility; ready for `shadcn add`
@@ -66,7 +66,7 @@ stage:
 | Styling      | Tailwind CSS v3 + shadcn/ui design tokens |
 | Shader       | `@paper-design/shaders-react` (WebGL) |
 | Animation    | Framer Motion |
-| Theming      | `next-themes` (scaffolded) |
+| Theming      | `next-themes` (mounted, default dark) |
 | Fonts        | Geist Sans + Geist Mono (self-hosted) |
 | Analytics    | `@vercel/analytics` |
 | Icons        | `lucide-react` |
@@ -103,17 +103,16 @@ shader-svg/
 │   └── globals.css              # Tailwind + shadcn tokens (the ACTIVE stylesheet)
 ├── components/
 │   ├── mesh-gradient-svg.tsx    # ★ the animated shader ghost (core feature)
-│   └── theme-provider.tsx       # next-themes wrapper (installed, not yet mounted)
+│   └── theme-provider.tsx       # next-themes wrapper (mounted in app/layout.tsx)
 ├── lib/
 │   └── utils.ts                 # cn() — clsx + tailwind-merge class helper
 ├── public/                      # static assets (v0 placeholder images)
-├── styles/globals.css           # unused byte-identical duplicate of app/globals.css
 ├── docs/
 │   ├── ENVIRONMENT.md           # .env conventions + every config file explained
 │   ├── INTEGRATIONS.md          # all third-party services, status & costs
 │   └── DEVELOPER_GUIDE.md       # setup, component deep-dive, tasks, troubleshooting
 ├── components.json              # shadcn/ui CLI manifest
-├── next.config.mjs              # build flags (lint/TS errors ignored, images unoptimized)
+├── next.config.mjs              # strict build (lint/TS errors fail), images unoptimized
 ├── tailwind.config.ts           # Tailwind v3 + shadcn semantic tokens
 ├── postcss.config.mjs           # Tailwind PostCSS plugin
 └── tsconfig.json                # strict TS, "@/*" path alias
@@ -149,7 +148,7 @@ version:
 
 | File | Purpose |
 |------|---------|
-| `next.config.mjs` | build behavior — ESLint/TS errors don't fail builds, `next/image` unoptimized |
+| `next.config.mjs` | strict build — ESLint/TS errors fail the build, `next/image` unoptimized |
 | `tailwind.config.ts` | Tailwind v3, `darkMode: 'class'`, shadcn color tokens, accordion keyframes |
 | `postcss.config.mjs` | Tailwind PostCSS plugin |
 | `tsconfig.json` | strict TS, `@/*` → repo root alias |
@@ -178,7 +177,7 @@ Details + per-file reference: `docs/ENVIRONMENT.md`.
 | `@paper-design/shaders-react` | ✅ used | WebGL mesh gradient; pinned via lockfile (`latest` in package.json — pin it) |
 | Framer Motion | ✅ used | float loop + spring eye tracking |
 | `@vercel/analytics` | ✅ used | zero-config page-view analytics on Vercel |
-| `next-themes` | ⚠️ scaffolded | `theme-provider.tsx` exists but isn't mounted — see guide §5.3 |
+| `next-themes` | ✅ active | mounted in `app/layout.tsx`, `defaultTheme="dark"`, `enableSystem` |
 | Geist fonts | ✅ used | self-hosted Sans + Mono |
 | shadcn/ui + Radix + Tailwind | ⚠️ foundation | tokens wired; no `components/ui/*` installed yet |
 | `lucide-react` | ✅ installed | unused — import on demand |
@@ -222,16 +221,26 @@ export requires).
 
 ## Roadmap / known issues
 
-- [ ] Pin `@paper-design/shaders-react` and `framer-motion` to exact
-      versions (currently `latest`)
-- [ ] Wire up `ThemeProvider` + add a theme toggle (or delete the scaffold)
-- [ ] Remove `ignoreDuringBuilds` / `ignoreBuildErrors` for real CI safety
-- [ ] Delete dead `styles/globals.css` duplicate
-- [ ] Scope SVG `id`/`querySelector` in `mesh-gradient-svg.tsx` with
-      `useId()` + `ref` for multi-instance safety
+- [x] Pin `@paper-design/shaders-react` (`0.0.57`) and `framer-motion`
+      (`12.23.24`) to exact versions
+- [x] Mount `ThemeProvider` in `app/layout.tsx` (default dark, system-aware)
+- [x] Remove `ignoreDuringBuilds` / `ignoreBuildErrors` for real CI safety
+- [x] Delete dead `styles/globals.css` duplicate
+- [x] Scope SVG `id`/`querySelector` in `mesh-gradient-svg.tsx` with
+      sanitized `useId()` + `svgRef` for multi-instance safety
+- [x] Update `app/layout.tsx` metadata (was "v0 App")
+- [x] Security: `next` 15.2.4 → **15.2.8** (CVE-2025-55182 React2Shell RCE,
+      CVE-2025-66478, CVE-2025-55184/67779; minimal safe bump on 15.2 line)
+- [x] QA fixes (2026-09-27, Playwright/Chromium, desktop + mobile):
+      eyes centered until first pointer input (were pinned left);
+      blink keyframes moved to `app/globals.css` (styled-jsx scoping never
+      reached framer-motion's `className`); `initial={{cx,cy}}` on ellipses
+      (framer-motion sampled missing attrs as `undefined` → console errors);
+      `pointermove` + `pointerdown` instead of `mousemove` so touch taps/drags
+      move the eyes; `app/icon.svg` favicon added
 - [ ] Prune unused deps (forms/charts/carousel/OTP) if the roadmap
       doesn't need them
-- [ ] Update `app/layout.tsx` metadata (still says "v0 App")
+- [ ] Add a visible theme toggle (provider is mounted; UI control missing)
 
 ## Contributing
 

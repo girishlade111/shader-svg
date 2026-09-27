@@ -90,3 +90,21 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Ghost eye blink — animates the SVG ry geometry property.
+   Lives here (not styled-jsx) because styled-jsx scoping does not
+   reach into framer-motion components' className. */
+@keyframes blink {
+  0%,
+  90%,
+  100% {
+    ry: 30;
+  }
+  95% {
+    ry: 3;
+  }
+}
+
+.animate-blink {
+  animation: blink 3s infinite ease-in-out;
+}

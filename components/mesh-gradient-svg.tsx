@@ -2,7 +2,7 @@
 
 import { MeshGradient } from "@paper-design/shaders-react"
 import { motion } from "framer-motion"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useId } from "react"
 
 export function MeshGradientSVG() {
   const colors = [
@@ -13,20 +13,35 @@ export function MeshGradientSVG() {
     "#1A1A2E", // Very dark blue
   ]
 
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
+  const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null)
   const [eyeOffset, setEyeOffset] = useState({ x: 0, y: 0 })
+  const svgRef = useRef<SVGSVGElement>(null)
+  // Unique clipPath id per instance — duplicate ids break with
+  // multiple <MeshGradientSVG/> on one page. Sanitized because
+  // React 19's useId() returns e.g. "«Rf6l7»", unsafe in url(#…) refs.
+  const clipId = `shapeClip-${useId().replace(/[^a-zA-Z0-9]/g, "")}`
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
+    // pointermove covers mouse, touch and pen — mousemove alone
+    // never fires for touch drags/taps on mobile browsers.
+    const handlePointerMove = (e: PointerEvent) => {
       setMousePosition({ x: e.clientX, y: e.clientY })
     }
 
-    window.addEventListener("mousemove", handleMouseMove)
-    return () => window.removeEventListener("mousemove", handleMouseMove)
+    window.addEventListener("pointermove", handlePointerMove)
+    // A stationary tap fires no pointermove — jump eyes to the tap point too.
+    window.addEventListener("pointerdown", handlePointerMove)
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove)
+      window.removeEventListener("pointerdown", handlePointerMove)
+    }
   }, [])
 
   useEffect(() => {
-    const rect = document.querySelector("svg")?.getBoundingClientRect()
+    // No mousemove yet (e.g. touch device, or before first move):
+    // keep eyes centered instead of pinning to a corner.
+    if (!mousePosition) return
+    const rect = svgRef.current?.getBoundingClientRect()
     if (rect) {
       const centerX = rect.left + rect.width / 2
       const centerY = rect.top + rect.height / 2
@@ -56,14 +71,24 @@ export function MeshGradientSVG() {
       }}
       style={{ transformOrigin: "top center" }}
     >
-      <svg xmlns="http://www.w3.org/2000/svg" width="231" height="289" viewBox="0 0 231 289" className="w-full h-auto">
+      <svg
+        ref={svgRef}
+        xmlns="http://www.w3.org/2000/svg"
+        width="231"
+        height="289"
+        viewBox="0 0 231 289"
+        className="w-full h-auto"
+        role="img"
+        aria-label="Animated ghost with a WebGL mesh-gradient body and eyes that follow the cursor"
+      >
+        <title>Shader ghost</title>
         <defs>
-          <clipPath id="shapeClip">
+          <clipPath id={clipId}>
             <path d="M230.809 115.385V249.411C230.809 269.923 214.985 287.282 194.495 288.411C184.544 288.949 175.364 285.718 168.26 280C159.746 273.154 147.769 273.461 139.178 280.23C132.638 285.384 124.381 288.462 115.379 288.462C106.377 288.462 98.1451 285.384 91.6055 280.23C82.912 273.385 70.9353 273.385 62.2415 280.23C55.7532 285.334 47.598 288.411 38.7246 288.462C17.4132 288.615 0 270.667 0 249.359V115.385C0 51.6667 51.6756 0 115.404 0C179.134 0 230.809 51.6667 230.809 115.385Z" />
           </clipPath>
         </defs>
 
-        <foreignObject width="231" height="289" clipPath="url(#shapeClip)">
+        <foreignObject width="231" height="289" clipPath={`url(#${clipId})`}>
           <div className="w-full h-full">
             <MeshGradient colors={colors} className="w-full h-full" speed={1} />
           </div>
@@ -74,6 +99,7 @@ export function MeshGradientSVG() {
           ry="30"
           fill="currentColor"
           className="animate-blink"
+          initial={{ cx: 80, cy: 120 }}
           animate={{
             cx: 80 + eyeOffset.x,
             cy: 120 + eyeOffset.y,
@@ -85,6 +111,7 @@ export function MeshGradientSVG() {
           ry="30"
           fill="currentColor"
           className="animate-blink"
+          initial={{ cx: 150, cy: 120 }}
           animate={{
             cx: 150 + eyeOffset.x,
             cy: 120 + eyeOffset.y,
@@ -92,23 +119,6 @@ export function MeshGradientSVG() {
           transition={{ type: "spring", stiffness: 150, damping: 15 }}
         />
       </svg>
-
-      <style jsx>{`
-        .animate-blink {
-          animation: blink 3s infinite ease-in-out;
-        }
-
-        @keyframes blink {
-          0%,
-          90%,
-          100% {
-            ry: 30;
-          }
-          95% {
-            ry: 3;
-          }
-        }
-      `}</style>
     </motion.div>
   )
 }

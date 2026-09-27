@@ -47,12 +47,10 @@ shader-svg/
 │   └── globals.css       # Tailwind + shadcn design tokens (ACTIVE)
 ├── components/
 │   ├── mesh-gradient-svg.tsx  # the animated shader ghost (main feature)
-│   └── theme-provider.tsx     # next-themes wrapper (not yet wired up)
+│   └── theme-provider.tsx     # next-themes wrapper (mounted in app/layout.tsx)
 ├── lib/
 │   └── utils.ts          # cn() — clsx + tailwind-merge helper
 ├── public/               # static assets (placeholder images from v0 scaffold)
-├── styles/
-│   └── globals.css       # byte-identical duplicate of app/globals.css (unused)
 ├── docs/
 │   ├── ENVIRONMENT.md    # .env + config reference
 │   ├── INTEGRATIONS.md   # third-party services
@@ -197,28 +195,14 @@ using the `@/components` alias. Then:
 import { Button } from "@/components/ui/button"
 ```
 
-### 5.3 Enable dark/light theme toggle
+### 5.3 Theme toggle (provider already mounted)
 
-`next-themes` is installed but not mounted. Wire it up:
-
-1. Wrap children in `app/layout.tsx`:
-
-```tsx
-import { ThemeProvider } from '@/components/theme-provider'
-
-<html lang="en" suppressHydrationWarning>
-  <body>
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      {children}
-    </ThemeProvider>
-    <Analytics />
-  </body>
-</html>
-```
-
-2. Add a toggle using `useTheme()` from `next-themes` anywhere client-side.
-   The `.dark` token set in `app/globals.css` and `darkMode: ['class']`
-   in `tailwind.config.ts` are already in place.
+`ThemeProvider` is mounted in `app/layout.tsx` (`attribute="class"`,
+`defaultTheme="dark"`, `enableSystem`, `suppressHydrationWarning` on
+`<html>`). What's missing is a visible toggle — add one with
+`useTheme()` from `next-themes` anywhere client-side. The `.dark` token
+set in `app/globals.css` and `darkMode: ['class']` in
+`tailwind.config.ts` are already in place.
 
 ### 5.4 Add a new page/route
 
@@ -276,25 +260,42 @@ engagement:
 
 Things a maintainer should know before scaling this up:
 
-1. **`next.config.mjs` ignores TS and ESLint errors during builds.**
-   Fine for a prototype; remove both flags before treating this as
-   production code so failures surface in CI.
-2. **Two deps float on `latest`** (`@paper-design/shaders-react`,
-   `framer-motion`). Pin exact versions to avoid surprise visual changes.
-3. **`styles/globals.css` is dead code** — byte-identical copy of
-   `app/globals.css`, imported nowhere. Delete it.
-4. **Global SVG id + global `querySelector("svg")`** in
-   `mesh-gradient-svg.tsx` break with multiple instances — use `useId()`
-   and a `ref`.
+1. ~~**`next.config.mjs` ignores TS and ESLint errors during builds**~~ —
+   fixed 2026-09-27: both flags removed, builds are strict.
+2. ~~**Two deps float on `latest`**~~ — fixed 2026-09-27: pinned
+   `@paper-design/shaders-react@0.0.57`, `framer-motion@12.23.24`.
+3. ~~**`styles/globals.css` dead duplicate**~~ — fixed 2026-09-27: deleted.
+4. ~~**Global SVG id + `querySelector("svg")`**~~ — fixed 2026-09-27:
+   sanitized `useId()` clip id + scoped `svgRef`.
 5. **Unused dependency surface** — form/chart/carousel/OTP libraries are
    installed but unimported. They don't bloat the client bundle (tree
    shaken / never imported), but they slow installs. Prune if the roadmap
    doesn't need them (`pnpm remove …`).
-6. **`theme-provider.tsx` is unwired** — either mount it (see §5.3) or
-   delete it to avoid confusion.
-7. **Metadata still says "v0 App / Created with v0"** in
-   `app/layout.tsx` — update title/description/OG tags before public
-   launch.
+6. ~~**`theme-provider.tsx` unwired**~~ — fixed 2026-09-27: mounted in
+   `app/layout.tsx` (default dark). A visible toggle UI is still missing
+   (see §5.3).
+7. ~~**Metadata says "v0 App"**~~ — fixed 2026-09-27.
+8. **QA fixes, 2026-09-27** (Playwright/Chromium, desktop + mobile,
+   dev + `next start` on a clean `pnpm build`):
+   - eyes now stay centered until the first pointer input (`mousePosition`
+     starts `null`; previously `{x:0,y:0}` pinned them fully left);
+   - blink `@keyframes` live in `app/globals.css` — styled-jsx scoping
+     never reached framer-motion's `className`, so the animation silently
+     didn't apply;
+   - ellipses carry `initial={{ cx, cy }}` — framer-motion sampled the
+     missing attributes as `undefined` at mount → 4 console errors;
+   - tracking listens to `pointermove` + `pointerdown` (not `mousemove`)
+     so touch drags and taps move the eyes;
+   - clip id sanitizes React 19 `useId()` output (`«Rf6l7»` → alphanumerics
+     only), safe for `url(#…)` refs;
+   - `app/icon.svg` favicon added (was a 404).
+   - Known environment noise, not code bugs: `/_vercel/insights/script.js`
+     404s on any non-Vercel host (Speed Insights endpoint only exists on
+     Vercel); `va.vercel-scripts.com` unreachable from restricted networks.
+9. **Security** — `next` 15.2.4 → **15.2.8** on 2026-09-27 (CVE-2025-55182
+   React2Shell RCE CVSS 10.0, CVE-2025-66478, CVE-2025-55184/67779;
+   minimal safe bump on the 15.2 line; `@next/swc-*` stay at 15.2.5 per
+   upstream's own optionalDeps pin).
 
 ## 9. Troubleshooting
 

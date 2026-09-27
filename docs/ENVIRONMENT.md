@@ -70,13 +70,9 @@ Then duplicate it as `.env.local` with real values for local development.
 ### 3.1 `next.config.mjs`
 
 ```js
+// Strict build: lint and type errors fail `next build`
+// (ignoreDuringBuilds / ignoreBuildErrors were removed 2026-09-27).
 const nextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,   // ESLint errors do not fail `next build`
-  },
-  typescript: {
-    ignoreBuildErrors: true,    // TS errors do not fail `next build`
-  },
   images: {
     unoptimized: true,          // next/image skips the Image Optimization API
   },
